@@ -3,13 +3,15 @@
 
 int main(int argc, char *argv[])
 {
-	if (argc != 2) {
-		std::cout << "[*] Fatal Error. Usage: " << argv[0] << " [process]" << std::endl;
+	if (argc != 3) {
+		std::cout << "[*] Fatal Error. Usage: " << argv[0] << " [dll] [process]" << std::endl;
 		return -1;
 	}
 
-	DllInjector dllInjector{ "C:\\Users\\Omer Katz\\source\\repos\\Archer\\x64\\Debug\\Hooker.dll" };
-	dllInjector.Inject(argv[1]);
+	std::cout << argv[1] << std::endl;
+
+	DllInjector dllInjector{ argv[1] };
+	dllInjector.Inject(argv[2]);
 
 	return 0;
 }
