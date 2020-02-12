@@ -8,38 +8,10 @@ DllInjector::DllInjector(std::string dll)
 void DllInjector::Inject(std::string processName)
 {
 	DWORD pid = this->ProcessNameToPID(processName);
-	std::cout << "[pid] " << pid << std::endl;
+	HANDLE processHandle = this->GetProcessHandle(pid);
 
-	HANDLE processHandle = OpenProcess(
-		PROCESS_ALL_ACCESS,
-		FALSE,
-		pid
-	);
-
-	HMODULE dllHandle = GetModuleHandle("Kernel32");
-
-	FARPROC loadLibraryAddress = GetProcAddress(
-		dllHandle,
-		"LoadLibraryA"
-	);
-
-	LPVOID dllPathAddress = VirtualAllocEx(
-		processHandle,
-		NULL,
-		this->dll.size() + 1,
-		MEM_COMMIT | MEM_RESERVE,
-		PAGE_READWRITE
-	);
-
-	BOOL hasSucceeded = WriteProcessMemory(
-		processHandle,
-		dllPathAddress,
-		this->dll.c_str(),
-		this->dll.size() + 1,
-		NULL
-	);
-
-	std::cout << "[has succeeded] " << hasSucceeded << std::endl;
+	FARPROC loadLibraryAddress = this->GetLoadLibraryAddress();
+	LPVOID dllPathAddress = this->WriteDllPathToProcessMemory(processHandle);
 
 	CreateRemoteThread(
 		processHandle,
@@ -71,5 +43,73 @@ DWORD DllInjector::ProcessNameToPID(std::string processName)
 
 	CloseHandle(processSnapshotHandle);
 
+	if (pid == 0) {
+		throw std::exception("Invalid process name.");
+	}
+
 	return pid;
+}
+
+HANDLE DllInjector::GetProcessHandle(DWORD pid)
+{
+	HANDLE processHandle = OpenProcess(
+		PROCESS_ALL_ACCESS,
+		FALSE,
+		pid
+	);
+
+	if (!processHandle) {
+		throw std::exception("Could not open process.");
+	}
+
+	return processHandle;
+}
+
+FARPROC DllInjector::GetLoadLibraryAddress()
+{
+	HMODULE kernel32Handle = GetModuleHandle("Kernel32");
+
+	if (!kernel32Handle) {
+		throw std::exception("Could not open Kernel32.dll.");
+	}
+
+	FARPROC loadLibraryAddress = GetProcAddress(
+		kernel32Handle,
+		"LoadLibraryA"
+	);
+
+	if (!loadLibraryAddress) {
+		throw std::exception("Could not get the address of LoadLibrary.");
+	}
+
+	return loadLibraryAddress;
+}
+
+LPVOID DllInjector::WriteDllPathToProcessMemory(HANDLE processHandle)
+{
+	LPVOID dllPathAddress = VirtualAllocEx(
+		processHandle,
+		NULL,
+		this->dll.size() + 1,
+		MEM_COMMIT | MEM_RESERVE,
+		PAGE_READWRITE
+	);
+
+	if (!dllPathAddress) {
+		throw std::exception("Could not allocate memory for the dll path.");
+	}
+
+	BOOL hasSucceeded = WriteProcessMemory(
+		processHandle,
+		dllPathAddress,
+		this->dll.c_str(),
+		this->dll.size() + 1,
+		NULL
+	);
+
+	if (!hasSucceeded) {
+		throw std::exception("Could not write the dll path into process' memory.");
+	}
+
+	return dllPathAddress;
 }

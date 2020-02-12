@@ -15,5 +15,8 @@ private:
 	std::string dll;
 
 	DWORD ProcessNameToPID(std::string processName);
+	HANDLE GetProcessHandle(DWORD pid);
+	FARPROC GetLoadLibraryAddress();
+	LPVOID WriteDllPathToProcessMemory(HANDLE processHandle);
 };
 
